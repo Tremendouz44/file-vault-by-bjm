@@ -25,7 +25,7 @@
 const APP = "https://tremendouz44.github.io/Better-Explorer/d.html";
 const APP_ORIGIN = new URL(APP).origin;
 const frame = document.getElementById("app");
-frame.src = APP + "?embed=1" + location.hash;           // everything after # stays in the browser (never sent to a server)
+frame.src = APP + "?embed=1&t=" + Date.now() + location.hash;   // always the newest page (no stale browser copy); after # stays in the browser
 window.addEventListener("hashchange", () => location.reload());
 
 let handle = null;
