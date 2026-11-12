@@ -1,0 +1,726 @@
+<!doctype html>
+<!--
+  Better explorer by BJM – download page for "Direct download link"
+  Author: Branislav Jozef Murcin
+  Repository: https://github.com/tremendouz44/Better-Explorer
+
+  The part of the link after # holds the Trimble Connect share token and the list of files (with folder paths),
+  compressed and, when a password was set, encrypted. Nothing of it is sent to any server except Trimble Connect.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Shared files</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --blue: #0063a3; --blue-hover: #217cbb; --blue-dark: #004f83; --blue-tint: #e0eefa;
+    --text: #252a2e; --text-2: #464b52; --text-3: #6a6e79;
+    --line: #e0e1e9; --line-2: #cbcdd6; --guide: #8b90a0;
+    --bg: #f1f1f6; --white: #ffffff; --head: #f9f9fb;
+    --selected: #dcedf9; --hover: #f5f5f9; --red: #da212c;
+    --rh: 44px; --cb: 18px; --hitw: 44px; --ico: 22px; --tri: 22px;
+  }
+  body.compact { --rh: 22px; --cb: 16px; --hitw: 34px; --ico: 16px; --tri: 18px; }
+  body.compact td { font-size: 13px; line-height: 1.2; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body { font-family: "Open Sans", Arial, sans-serif; font-size: 14px; color: var(--text); background: var(--bg); display: flex; flex-direction: column; min-height: 100vh; }
+  .hidden { display: none !important; }
+  button { font-family: inherit; }
+  svg.i { width: 20px; height: 20px; fill: currentColor; flex: none; }
+
+  .appbar { height: 52px; flex: none; display: flex; align-items: center; gap: 12px; padding: 0 16px; background: var(--blue-dark); color: #fff; }
+  .appbar svg { width: 24px; height: 24px; fill: #fff; }
+  .appbar .t { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .appbar .by { font-size: 13px; font-weight: 600; opacity: .9; white-space: nowrap; }
+  .watermark { position: fixed; right: 4vw; bottom: 6vh; z-index: 50; pointer-events: none; user-select: none; text-align: right; white-space: nowrap;
+               font-size: clamp(72px, 16vw, 260px); font-weight: 700; line-height: .95; letter-spacing: .02em; color: var(--blue); opacity: .045; }
+  .watermark small { display: block; font-size: .5em; }
+  .comment { margin: 2px 0 4px; font-size: 16px; color: var(--text); white-space: pre-wrap; word-break: break-word; }
+  .icon-btn.compact-btn:not(.on) { color: var(--text-3); }
+  .lang { margin-left: 14px; display: flex; align-items: center; gap: 2px; font-size: 15px; }
+  .appbar .by { margin-left: auto; }
+  .lang button { border: 0; background: none; color: rgba(255,255,255,.7); font: inherit; font-weight: 600; padding: 4px 7px; border-radius: 4px; cursor: pointer; }
+  .lang button:hover { background: rgba(255,255,255,.12); color: #fff; }
+  .lang button.on { color: #fff; text-decoration: underline; text-underline-offset: 4px; }
+  .lang span { opacity: .5; }
+
+  main { flex: 1; display: flex; flex-direction: column; min-height: 0; padding: 16px; }
+  .screen { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; color: var(--text-2); padding: 24px 0; }
+  .screen h2 { margin: 0; font-size: 20px; font-weight: 400; color: var(--text); }
+  .screen p { margin: 0; max-width: 460px; line-height: 1.5; }
+  .spinner { width: 36px; height: 36px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--blue); animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .card { width: 100%; max-width: 400px; background: var(--white); padding: 24px; text-align: left; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+  .card h2 { margin: 0 0 6px; font-size: 20px; font-weight: 600; }
+  .card p { margin: 0 0 16px; color: var(--text-2); }
+  .card label { display: block; margin-bottom: 5px; font-size: 12px; color: var(--text-2); }
+  .card input { width: 100%; height: 40px; padding: 0 10px; font: inherit; color: var(--text); background: var(--white); border: 1px solid var(--line-2); border-bottom-color: var(--text-3); }
+  .card input:focus { outline: none; border-bottom: 2px solid var(--blue); }
+  .card .foot { display: flex; justify-content: flex-end; margin-top: 18px; }
+  .err { min-height: 18px; margin-top: 8px; font-size: 13px; color: var(--red); }
+
+  .btn-primary, .btn-secondary { height: 34px; padding: 0 16px; border-radius: 4px; font-size: 14px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+  .btn-primary { border: 1px solid var(--blue); background: var(--blue); color: #fff; }
+  .btn-primary:hover { background: var(--blue-hover); border-color: var(--blue-hover); }
+  .btn-secondary { border: 1px solid var(--blue); background: var(--white); color: var(--blue); }
+  .btn-secondary:hover { background: var(--blue-tint); }
+  .btn-primary:disabled, .btn-secondary:disabled { background: #e8e9ee; border-color: #d4d6de; color: #9a9ea8; cursor: default; }
+  .btn-primary svg.i { width: 18px; height: 18px; }
+
+  #scrMain { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .head h1 { margin: 0; font-size: 20px; font-weight: 400; word-break: break-word; }
+  .info { margin-top: 4px; font-size: 13px; color: var(--text-3); }
+  .bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-height: 46px; margin: 4px 0 8px; padding: 6px 12px; background: var(--blue-tint); border-left: 4px solid var(--blue); }
+  .bar .cnt { font-weight: 600; }
+  .bar .grow { flex: 1; }
+  .prog { min-height: 18px; margin: -2px 0 6px; font-size: 13px; color: var(--text-2); }
+
+  .table-wrap { flex: 1; min-height: 200px; overflow: auto; background: var(--white); }
+  table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+  th { position: sticky; top: 0; z-index: 2; background: var(--head); height: 46px; padding: 0 12px; text-align: left; font-weight: 600; color: var(--text-3); border-bottom: 1px solid var(--line-2); white-space: nowrap; }
+  th.namecol, td.name { padding-left: 0; }
+  td.size, th.size { text-align: right; padding-right: 20px; color: var(--text-3); }
+  td { height: var(--rh); padding: 0 12px; box-shadow: inset 0 -1px 0 var(--line); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover td { background: var(--hover); }
+  tbody tr.sel td { background: var(--selected); }
+  td.name { color: var(--text); }
+  .cell { display: flex; align-items: center; height: var(--rh); overflow: hidden; }
+  .nm { overflow: hidden; text-overflow: ellipsis; }
+  tr.folder .nm { font-weight: 600; }
+  .cbhit { width: var(--hitw); align-self: stretch; flex: none; display: grid; place-items: center; cursor: pointer; }
+  .cbhit:hover { background: rgba(0,99,163,.10); }
+  input.cb { width: var(--cb); height: var(--cb); margin: 0; accent-color: var(--blue); cursor: pointer; pointer-events: none; }
+  /* tree guide lines, the same as in Better explorer */
+  .col { position: relative; width: 32px; align-self: stretch; flex: none; }
+  .col i { position: absolute; background: var(--guide); pointer-events: none; }
+  .col i.gv { left: 11px; top: 0; bottom: 0; width: 2px; }
+  .col i.gt { left: 11px; top: 0; height: calc(50% + 1px); width: 2px; }
+  .col i.gh { left: 11px; top: 50%; height: 2px; width: 27px; }
+  .col i.gh.file { width: 43px; }
+  .toolbar { display: flex; align-items: center; gap: 4px; margin-top: 8px; }
+  .text-btn { height: 34px; padding: 0 12px; border: 0; background: none; border-radius: 4px; color: var(--blue); font-size: 14px; font-weight: 600; cursor: pointer; }
+  .text-btn:hover { background: var(--blue-tint); }
+  .icon-btn { width: 36px; height: 36px; border: 0; background: none; border-radius: 50%; display: grid; place-items: center; color: var(--text); cursor: pointer; flex: none; }
+  .icon-btn:hover { background: var(--line); }
+  .icon-btn.on { background: var(--blue-tint); color: var(--blue); }
+  .pwbox { position: relative; }
+  .card .pwbox input { padding-right: 44px; }
+  .eye { position: absolute; right: 3px; top: 3px; width: 34px; height: 34px; border: 0; padding: 0; background: none; color: #8a8e99; display: grid; place-items: center; cursor: pointer; }
+  .eye.on { color: var(--blue); }
+  .tog, .tog-gap { width: 24px; height: min(24px, var(--rh)); flex: none; }
+  .tog { display: grid; place-items: center; border: 0; background: none; padding: 0; cursor: pointer; color: #3d4148; border-radius: 4px; }
+  .tog:hover { background: var(--line); }
+  .tog svg { width: var(--tri); height: var(--tri); fill: currentColor; transition: transform .12s; }
+  .tog.open svg { transform: rotate(90deg); }
+  svg.ico { width: var(--ico); height: var(--ico); flex: none; margin: 0 6px 0 2px; }
+  svg.ico.fold { fill: #3d4148; }
+  svg.ico.file { fill: #8a8e99; }
+  .foot-note { margin-top: 10px; font-size: 12px; color: var(--text-3); }
+  .col-size { width: 100px; }
+  @media (max-width: 640px) { .appbar .by { display: none; } }
+  .bar .cnt { margin-right: 6px; }
+</style>
+</head>
+<body>
+<header class="appbar">
+  <svg viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2Z"/></svg>
+  <span class="t" id="appTitle"></span>
+  <div class="lang"><button type="button" data-lang="sk">SK</button><span>|</span><button type="button" data-lang="en">ENG</button></div>
+  <span class="by">File Vault by BJM</span>
+</header>
+<div class="watermark" aria-hidden="true">File Vault<small>by BJM</small></div>
+<main>
+  <section id="scrLoad" class="screen"><div class="spinner"></div><p id="loadText"></p></section>
+
+  <section id="scrPass" class="screen hidden">
+    <form class="card" id="pwForm" autocomplete="off">
+      <h2 data-t="pwTitle"></h2>
+      <p data-t="pwText"></p>
+      <label for="pw" data-t="pwLabel"></label>
+      <div class="pwbox"><input id="pw" type="password" autocomplete="current-password"><button id="pwEye" class="eye" type="button" data-tt="showPw"><svg class="i" viewBox="0 0 24 24"><path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7ZM2 4.27l2.28 2.28.46.46A11.8 11.8 0 0 0 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27ZM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2Zm4.31-.78 3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01Z"/></svg></button></div>
+      <div id="pwErr" class="err"></div>
+      <div class="foot"><button id="pwOk" class="btn-primary" type="submit" data-t="open"></button></div>
+    </form>
+  </section>
+
+  <section id="scrMsg" class="screen hidden"><h2 id="msgT"></h2><p id="msgP"></p></section>
+
+  <section id="scrMain" class="hidden">
+    <div id="comment" class="comment hidden"></div>
+    <div class="toolbar">
+      <button id="tExpand" class="text-btn" type="button" data-t="expand"></button>
+      <button id="tCollapse" class="text-btn" type="button" data-t="collapse"></button>
+      <button id="tCompact" class="icon-btn compact-btn" type="button" data-tt="compact">
+        <svg class="i" viewBox="0 0 24 24"><path d="M3 4h18v2H3V4Zm0 7h18v2H3v-2Zm0 7h18v2H3v-2Z"/></svg>
+      </button>
+    </div>
+    <div class="bar">
+      <span id="cnt" class="cnt"></span>
+      <button id="bInvert" class="btn-secondary" type="button" data-t="invert" data-tt="invertTip"></button>
+      <button id="bClear" class="btn-secondary" type="button" data-t="clear"></button>
+      <span class="grow"></span>
+      <button id="bSep" class="btn-secondary" type="button" data-t="dlSel" data-tt="dlSelTip"></button>
+      <button id="bDl" class="btn-primary" type="button">
+        <svg class="i" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7ZM5 18v2h14v-2H5Z"/></svg><span id="bDlText" data-t="dlTree"></span>
+      </button>
+    </div>
+    <div id="prog" class="prog"></div>
+    <div class="table-wrap">
+      <table>
+        <colgroup><col><col class="col-size"></colgroup>
+        <thead><tr>
+          <th class="namecol"><div class="cell"><span class="cbhit" id="cbAllHit" data-tt="selAll"><input type="checkbox" id="cbAll" class="cb" tabindex="-1" aria-label="Select everything"></span><span data-t="name"></span></div></th>
+          <th class="size" data-t="size"></th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="foot-note"><span data-t="foot"></span> <span id="validity"></span></div>
+  </section>
+</main>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const ARROW = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+const FOLDER_ICON = '<svg class="ico fold" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2Z"/></svg>';
+const FILE_ICON = '<svg class="ico file" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6Zm-1 7V3.5L18.5 9H13Z"/></svg>';
+const ZIP_MAX = 3.5 * 1024 ** 3;
+const EYE_ON = '<svg class="i" viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5ZM12 17a5 5 0 1 1 0-10 5 5 0 0 1 0 10Zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg>';
+const EYE_OFF = '<svg class="i" viewBox="0 0 24 24"><path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7ZM2 4.27l2.28 2.28.46.46A11.8 11.8 0 0 0 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27ZM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2Zm4.31-.78 3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01Z"/></svg>';
+
+function fmtSize(b) {
+  if (b == null || b < 0) return "";
+  if (b < 1024) return b + " B";
+  const u = ["KB", "MB", "GB", "TB"]; let i = -1;
+  do { b /= 1024; i++; } while (b >= 1024 && i < u.length - 1);
+  return b.toFixed(b < 10 ? 2 : b < 100 ? 1 : 0) + " " + u[i];
+}
+function fmtDate(sec) {
+  if (!sec) return "";
+  const d = new Date(sec * 1000);
+  return d.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }) + " " + d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* ---------- languages: SK | ENG ---------- */
+const TEXT = {
+  en: {
+    shared: "Shared files", opening: "Opening the shared files…", reading: "Reading files: {a} of {b}…",
+    pwTitle: "Password required", pwText: "These files are protected. Enter the password you received with the link.",
+    pwLabel: "Password", open: "Open", wrongPw: "Wrong password.", showPw: "Show password", hidePw: "Hide password",
+    expand: "Expand all", collapse: "Collapse all", compact: "Compact rows",
+    invert: "Invert selection", invertTip: "Selected files become unselected and the other way round", clear: "Clear selection",
+    selectFiles: "Select files", selected: "{a} of {b} files selected · {size}",
+    dlSel: "Download selected", dlSelTip: "One file as it is, several files in one ZIP without folders",
+    dlTree: "Download and keep folder tree", selAll: "Select everything", name: "Name", size: "Size",
+    foot: "Files are downloaded straight from Trimble Connect.", validUntil: "The link is valid until {d}.",
+    preparing: "Preparing “{n}”…", saving: "Saving “{n}”…", saved: "“{n}” saved.", downloading: "“{n}” is downloading.",
+    zipProgress: "Preparing ZIP: {a} of {b} files ({size})", zipDone: "{n}: {a} files {how}.", zipFailed: "{n}: {a} files, {f} failed ({e}).",
+    savedWord: "saved", downloadingWord: "downloading", tooMuch: "Too much for one ZIP in the browser ({size}). Choose fewer files.",
+    nothing: "Nothing could be downloaded.", notInShare: "This file is no longer part of the share.",
+    refused: "Trimble Connect refused the download (the share may have been removed or has expired).", answered: "Trimble Connect answered {s}.",
+    goneT: "This link no longer works", goneP: "The share was removed in Trimble Connect or it has expired. Ask the sender for a new link.",
+    unreachT: "Trimble Connect could not be reached", unreachP: "{e} Check the connection and reload the page.",
+    noteT: "This link cannot be opened", noteP: "The note of this share was changed in Trimble Connect. Ask the sender for a new link.",
+    readT: "The files could not be read", readP: "{e} Reload the page to try again.",
+    emptyT: "No files left in this share", emptyP: "The shared files were deleted or moved out of reach in Trimble Connect.",
+    noLinkT: "No files in this link", noLinkP: "The link is incomplete. Copy the whole link, including everything after the # sign.",
+    oldT: "This browser is too old", oldP: "Open the link in a current Chrome, Edge, Firefox or Safari.",
+    damagedT: "This link is damaged", damagedP: "Copy the whole link again, including everything after the # sign.",
+  },
+  sk: {
+    shared: "Zdieľané súbory", opening: "Otváram zdieľané súbory…", reading: "Načítavam súbory: {a} z {b}…",
+    pwTitle: "Vyžaduje sa heslo", pwText: "Tieto súbory sú chránené. Zadajte heslo, ktoré ste dostali k linku.",
+    pwLabel: "Heslo", open: "Otvoriť", wrongPw: "Nesprávne heslo.", showPw: "Zobraziť heslo", hidePw: "Skryť heslo",
+    expand: "Rozbaliť všetko", collapse: "Zbaliť všetko", compact: "Kompaktné riadky",
+    invert: "Invertovať výber", invertTip: "Označené súbory sa odznačia a neoznačené označia", clear: "Zrušiť výber",
+    selectFiles: "Vyberte súbory", selected: "Vybrané {a} z {b} súborov · {size}",
+    dlSel: "Stiahnuť vybrané", dlSelTip: "Jeden súbor tak, ako je, viac súborov v jednom ZIPe bez priečinkov",
+    dlTree: "Stiahnuť so stromom priečinkov", selAll: "Označiť všetko", name: "Názov", size: "Veľkosť",
+    foot: "Súbory sa sťahujú priamo z Trimble Connect.", validUntil: "Link platí do {d}.",
+    preparing: "Pripravujem „{n}“…", saving: "Ukladám „{n}“…", saved: "„{n}“ je uložený.", downloading: "„{n}“ sa sťahuje.",
+    zipProgress: "Pripravujem ZIP: {a} z {b} súborov ({size})", zipDone: "{n}: {a} súborov {how}.", zipFailed: "{n}: {a} súborov, {f} sa nepodarilo ({e}).",
+    savedWord: "uložených", downloadingWord: "sa sťahuje", tooMuch: "Na jeden ZIP v prehliadači je to priveľa ({size}). Vyberte menej súborov.",
+    nothing: "Nepodarilo sa stiahnuť nič.", notInShare: "Tento súbor už nie je súčasťou zdieľania.",
+    refused: "Trimble Connect stiahnutie odmietol (zdieľanie mohlo byť zrušené alebo vypršalo).", answered: "Trimble Connect odpovedal {s}.",
+    goneT: "Tento link už nefunguje", goneP: "Zdieľanie bolo v Trimble Connect zrušené alebo vypršalo. Požiadajte odosielateľa o nový link.",
+    unreachT: "Trimble Connect je nedostupný", unreachP: "{e} Skontrolujte pripojenie a obnovte stránku.",
+    noteT: "Tento link sa nedá otvoriť", noteP: "Poznámka tohto zdieľania bola v Trimble Connect zmenená. Požiadajte odosielateľa o nový link.",
+    readT: "Súbory sa nepodarilo načítať", readP: "{e} Obnovte stránku a skúste to znova.",
+    emptyT: "V zdieľaní už nie sú žiadne súbory", emptyP: "Zdieľané súbory boli v Trimble Connect zmazané alebo presunuté.",
+    noLinkT: "Link neobsahuje súbory", noLinkP: "Link je neúplný. Skopírujte celý link vrátane všetkého za znakom #.",
+    oldT: "Tento prehliadač je zastaraný", oldP: "Otvorte link v aktuálnom Chrome, Edge, Firefoxe alebo Safari.",
+    damagedT: "Link je poškodený", damagedP: "Skopírujte celý link znova vrátane všetkého za znakom #.",
+  },
+};
+let LANG = (() => {
+  try { const l = localStorage.getItem("fv.lang"); if (l === "sk" || l === "en") return l; } catch { /* optional */ }
+  return /^(sk|cs)\b/i.test(navigator.language || "") ? "sk" : "en";
+})();
+const t = (k, v = {}) => String(TEXT[LANG][k] ?? TEXT.en[k] ?? k).replace(/\{(\w+)\}/g, (_, x) => v[x] ?? "");
+let lastMsg = null, title = "";
+function applyLang() {
+  document.documentElement.lang = LANG;
+  document.querySelectorAll("[data-t]").forEach(el => { el.textContent = t(el.dataset.t); });
+  document.querySelectorAll("[data-tt]").forEach(el => { el.title = t(el.dataset.tt); });
+  document.querySelectorAll(".lang button").forEach(b => b.classList.toggle("on", b.dataset.lang === LANG));
+  const ttl = title || t("shared");
+  document.title = ttl; $("appTitle").textContent = ttl;
+  if ($("loadText").dataset.k) $("loadText").textContent = t($("loadText").dataset.k, JSON.parse($("loadText").dataset.v || "{}"));
+  if (lastMsg && !$("scrMsg").classList.contains("hidden")) message(...lastMsg);
+  $("validity").textContent = M && M.e ? t("validUntil", { d: M.e }) : "";
+  $("prog").textContent = "";
+  if (nodes.size) render();
+}
+document.querySelectorAll(".lang button").forEach(b => b.onclick = () => {
+  LANG = b.dataset.lang;
+  try { localStorage.setItem("fv.lang", LANG); } catch { /* optional */ }
+  applyLang();
+});
+function loadText(k, v = {}) { const el = $("loadText"); el.dataset.k = k; el.dataset.v = JSON.stringify(v); el.textContent = t(k, v); }
+function show(id) { for (const s of ["scrLoad", "scrPass", "scrMsg", "scrMain"]) $(s).classList.toggle("hidden", s !== id); }
+function message(k, v = {}) { lastMsg = [k, v]; $("msgT").textContent = t(k + "T", v); $("msgP").textContent = t(k + "P", v); show("scrMsg"); }
+
+/* ---------- reading the link ---------- */
+function unb64u(s) {
+  s = s.replace(/-/g, "+").replace(/_/g, "/");
+  const bin = atob(s + "=".repeat((4 - s.length % 4) % 4));
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+async function inflate(bytes) {
+  return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer());
+}
+async function decrypt(bytes, password) {
+  const salt = bytes.subarray(0, 16), iv = bytes.subarray(16, 28), ct = bytes.subarray(28);
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey({ name: "PBKDF2", salt, iterations: 250000, hash: "SHA-256" }, base, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+  return new Uint8Array(await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ct));   // throws on a wrong password
+}
+async function unpack(raw, password) {
+  const flags = raw[0];
+  let data = raw.subarray(1);
+  if (flags & 2) data = await decrypt(data, password);
+  if (flags & 1) data = await inflate(data);
+  return JSON.parse(new TextDecoder().decode(data));
+}
+
+/* ---------- Trimble Connect access through the share ---------- */
+let M = null;                   // what the link describes: { a: API base, t: token, n: title, e: expiry, k: tree?, f: [[id, path, size, mtime]] }
+let share = null;               // GET /shares/token/<token>: accessToken + objects (each file has its own token)
+const objToken = new Map();     // file id -> its own share token
+
+class HttpError extends Error { constructor(status, text) { super(text); this.status = status; } }
+async function loadShare() {
+  const r = await fetch(`${M.a}/shares/token/${encodeURIComponent(M.t)}`);
+  if (!r.ok) throw new HttpError(r.status, await r.text());
+  share = await r.json();
+  objToken.clear();
+  for (const o of share.objects || []) {
+    const t = String(o.url || "").match(/\/s\/([A-Za-z0-9_-]{20,})/)?.[1];
+    if (o.id && t) objToken.set(String(o.id), t);
+  }
+}
+async function getJson(path, bearer, stoken) {
+  const r = await fetch(M.a + path, { headers: { Authorization: "Bearer " + bearer, "x-share-token": stoken } });
+  if (!r.ok) throw new HttpError(r.status, await r.text());
+  return r.json();
+}
+// a fresh address of the file itself (valid for a short time, so it is asked for right before each download)
+async function downloadUrl(id) {
+  const path = `/files/fs/${encodeURIComponent(id)}/downloadurl`;
+  try { return (await getJson(path, share.accessToken, M.t)).url; }
+  catch (e) { if (!(e instanceof HttpError) || ![401, 403].includes(e.status)) throw e; }
+  await loadShare();                                         // the access token may have expired
+  try { return (await getJson(path, share.accessToken, M.t)).url; }
+  catch (e) { if (!(e instanceof HttpError) || ![401, 403].includes(e.status)) throw e; }
+  const tk = objToken.get(id);                               // last try: the file's own token
+  if (!tk) throw new Error(t("notInShare"));
+  const r = await fetch(`${M.a}/shares/token/${encodeURIComponent(tk)}`);
+  if (!r.ok) throw new HttpError(r.status, await r.text());
+  const own = await r.json();
+  return (await getJson(path, own.accessToken, tk)).url;
+}
+
+/* ---------- tree ---------- */
+const nodes = new Map();        // key -> { key, name, type, parent, kids[], id, size, mtime }
+const sel = new Set();          // selected file keys
+const open = new Set();
+const ROOT = "/";
+function build() {
+  nodes.set(ROOT, { key: ROOT, name: "", type: "FOLDER", parent: null, kids: [] });
+  M.f.forEach(([id, path, size, mtime], i) => {
+    const segs = M.k ? String(path).split("/").filter(Boolean) : [String(path)];
+    let parent = ROOT;
+    for (let j = 0; j < segs.length - 1; j++) {
+      const key = parent + segs[j] + "/";
+      if (!nodes.has(key)) { nodes.set(key, { key, name: segs[j], type: "FOLDER", parent, kids: [] }); nodes.get(parent).kids.push(key); }
+      parent = key;
+    }
+    const key = "#" + i;
+    nodes.set(key, { key, name: segs[segs.length - 1] || id, type: "FILE", parent, id: String(id), size: size >= 0 ? size : null, mtime });
+    nodes.get(parent).kids.push(key);
+  });
+  for (const k of nodes.get(ROOT).kids) {                    // first two levels open
+    if (nodes.get(k).type !== "FOLDER") continue;
+    open.add(k);
+    for (const c of nodes.get(k).kids) if (nodes.get(c).type === "FOLDER") open.add(c);
+  }
+}
+const files = key => { const n = nodes.get(key); return n.type === "FILE" ? [key] : n.kids.flatMap(files); };
+const byName = (a, b) => (a.type !== b.type ? (a.type === "FOLDER" ? -1 : 1) : a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }));
+function pathOf(key) { const out = []; for (let n = nodes.get(key); n && n.key !== ROOT; n = nodes.get(n.parent)) out.unshift(n.name); return out.join("/"); }
+
+// one column per indent level: the rail of an ancestor that still has siblings below, and this item's own branch
+function colsHtml(d, lasts, isLast, isFolder) {
+  let h = "";
+  for (let j = 0; j < d; j++) {
+    let inner = "";
+    if (j < d - 1) { if (!lasts[j + 1]) inner = '<i class="gv"></i>'; }
+    else inner = `<i class="${isLast ? "gt" : "gv"}"></i><i class="gh${isFolder ? "" : " file"}"></i>`;
+    h += `<span class="col">${inner}</span>`;
+  }
+  return h;
+}
+function render() {
+  const rows = [];
+  const walk = (key, depth, lasts) => {
+    const kids = nodes.get(key).kids.map(k => nodes.get(k)).sort(byName);
+    kids.forEach((n, idx) => {
+      const isF = n.type === "FOLDER", isLast = idx === kids.length - 1;
+      const fs = isF ? files(n.key) : null, on = isF ? fs.filter(k => sel.has(k)).length : 0;
+      const checked = isF ? fs.length > 0 && on === fs.length : sel.has(n.key), ind = isF && on > 0 && on < fs.length;
+      const size = isF ? fs.reduce((s, k) => s + (nodes.get(k).size || 0), 0) : n.size;
+      rows.push(`<tr data-key="${esc(n.key)}" class="${isF ? "folder " : ""}${checked ? "sel" : ""}">
+        <td class="name"><div class="cell">
+          <span class="cbhit" data-cb="${esc(n.key)}"><input type="checkbox" class="cb" tabindex="-1" ${checked ? "checked" : ""} ${ind ? 'data-ind="1"' : ""} aria-label="Select"></span>
+          ${colsHtml(depth, lasts, isLast, isF)}
+          ${isF ? `<button type="button" class="tog${open.has(n.key) ? " open" : ""}" data-tog="${esc(n.key)}">${ARROW}</button>` : '<span class="tog-gap"></span>'}
+          ${isF ? FOLDER_ICON : FILE_ICON}<span class="nm" title="${esc(n.name)}">${esc(n.name)}</span>
+        </div></td>
+        <td class="size">${esc(fmtSize(size))}</td></tr>`);
+      if (isF && open.has(n.key)) walk(n.key, depth + 1, [...lasts, isLast]);
+    });
+  };
+  walk(ROOT, 0, []);
+  $("rows").innerHTML = rows.join("");
+  document.querySelectorAll('#rows input.cb[data-ind="1"]').forEach(el => { el.indeterminate = true; });
+  const all = files(ROOT), n = sel.size;
+  $("cbAll").checked = n > 0 && n === all.length;
+  $("cbAll").indeterminate = n > 0 && n < all.length;
+  const selSize = [...sel].reduce((s, k) => s + (nodes.get(k).size || 0), 0);
+  $("cnt").textContent = n ? t("selected", { a: n, b: all.length, size: fmtSize(selSize) || "0 B" }) : t("selectFiles");
+  $("bDl").classList.toggle("hidden", !M.k);                 // a link without the folder tree only downloads separately
+  $("bSep").className = M.k ? "btn-secondary" : "btn-primary";
+  $("bDl").disabled = $("bSep").disabled = busy || n === 0;   // only what is selected is downloaded
+  $("bInvert").disabled = busy;
+  $("bClear").disabled = busy || n === 0;
+}
+
+$("rows").onclick = e => {
+  const cb = e.target.closest(".cbhit"), tog = e.target.closest("[data-tog]");
+  if (cb) {
+    const fs = files(cb.dataset.cb), allOn = fs.every(k => sel.has(k));
+    for (const k of fs) allOn ? sel.delete(k) : sel.add(k);
+    render(); return;
+  }
+  const tr = e.target.closest("tr");
+  if (!tr) return;
+  const n = nodes.get(tr.dataset.key);
+  if (n.type === "FOLDER" || tog) { open.has(n.key) ? open.delete(n.key) : open.add(n.key); render(); return; }
+  sel.has(n.key) ? sel.delete(n.key) : sel.add(n.key);       // a click on a file row ticks it
+  render();
+};
+$("tExpand").onclick = () => { for (const n of nodes.values()) if (n.type === "FOLDER" && n.key !== ROOT) open.add(n.key); render(); };
+$("tCollapse").onclick = () => { open.clear(); render(); };
+$("bClear").onclick = () => { sel.clear(); render(); };
+$("bInvert").onclick = () => { for (const k of files(ROOT)) sel.has(k) ? sel.delete(k) : sel.add(k); render(); };
+const COMPACT_ON = '<svg class="i" viewBox="0 0 24 24"><path d="M3 5h18v2H3V5Zm0 4h18v2H3V9Zm0 4h18v2H3v-2Zm0 4h18v2H3v-2Z"/></svg>', COMPACT_OFF = '<svg class="i" viewBox="0 0 24 24"><path d="M3 4h18v2H3V4Zm0 7h18v2H3v-2Zm0 7h18v2H3v-2Z"/></svg>';
+function setCompact(on) {                                   // remembered like in Better explorer
+  document.body.classList.toggle("compact", on);
+  $("tCompact").classList.toggle("on", on);
+  $("tCompact").innerHTML = on ? COMPACT_ON : COMPACT_OFF;
+  try { localStorage.setItem("be.compact2", on ? "1" : "0"); } catch { /* optional */ }
+}
+$("tCompact").onclick = () => setCompact(!document.body.classList.contains("compact"));
+{ let on = true; try { on = localStorage.getItem("be.compact2") !== "0"; } catch { /* optional */ } setCompact(on); }   // compact unless switched off
+$("pwEye").onclick = () => {
+  const show = $("pw").type === "password";
+  $("pw").type = show ? "text" : "password";
+  $("pwEye").classList.toggle("on", show); $("pwEye").dataset.tt = show ? "hidePw" : "showPw"; $("pwEye").title = t($("pwEye").dataset.tt);
+  $("pwEye").innerHTML = show ? EYE_ON : EYE_OFF;
+  $("pw").focus();
+};
+$("cbAllHit").onclick = () => {
+  const all = files(ROOT), allOn = all.every(k => sel.has(k));
+  for (const k of all) allOn ? sel.delete(k) : sel.add(k);
+  render();
+};
+
+/* ---------- downloading ---------- */
+let busy = false;
+const chosen = () => [...sel].map(k => nodes.get(k));
+function clickLink(href, name) {
+  const a = document.createElement("a");
+  a.href = href; if (name) a.download = name; a.rel = "noopener";
+  document.body.appendChild(a); a.click(); a.remove();
+}
+function errText(e) {
+  if (e instanceof HttpError) {
+    if ([401, 403, 404, 410].includes(e.status)) return t("refused");
+    return t("answered", { s: e.status });
+  }
+  return e?.message || String(e);
+}
+async function run(fn) {
+  if (busy) return;
+  busy = true; render();
+  try { await fn(); } catch (e) { $("prog").textContent = errText(e); }
+  finally { busy = false; render(); }
+}
+const two = x => String(x).padStart(2, "0");
+const safe = t => String(t || "").replace(/[\\/:*?"<>|]+/g, " ").trim();
+function zipName() { const d = new Date(); return `${safe(title || M.p) || "Shared files"}_${d.getFullYear()}_${two(d.getMonth() + 1)}_${two(d.getDate())}.zip`; }   // named after the title in the blue bar
+// The "Save as" window is used where the browser has it (Chrome, Edge). A file saved through it does not appear in the
+// browser's download list; other browsers fall back to their normal download.
+const USE_PICKER = true;
+// the system "Save as" window, starting in the Downloads folder (any language); undefined = not available, null = cancelled
+async function pickSave(name, zip) {
+  if (!USE_PICKER || typeof window.showSaveFilePicker !== "function") return undefined;
+  try {
+    return await window.showSaveFilePicker({ suggestedName: name, startIn: "downloads", ...(zip ? { types: [{ description: "ZIP archive", accept: { "application/zip": [".zip"] } }] } : {}) });
+  } catch (e) { return e && e.name === "AbortError" ? null : undefined; }
+}
+async function downloadOne(n) {
+  const handle = await pickSave(n.name, false);          // first, while the click still counts as the person's action
+  if (handle === null) return;
+  $("prog").textContent = t("preparing", { n: n.name });
+  const url = await downloadUrl(n.id);
+  if (handle) {
+    const res = await fetch(url);
+    if (!res.ok) throw new HttpError(res.status, "");
+    $("prog").textContent = t("saving", { n: n.name });
+    await res.body.pipeTo(await handle.createWritable());   // streamed to the disk, also for big files
+    $("prog").textContent = t("saved", { n: n.name });
+  } else {
+    clickLink(url, n.name);                               // browsers without the Save window: their normal download (Downloads)
+    $("prog").textContent = t("downloading", { n: n.name });
+  }
+}
+// with folder tree: always a ZIP that keeps the folders (also for one file)
+$("bDl").onclick = () => run(async () => { const list = chosen(); if (list.length) return downloadZip(list, true); });
+// separately: one file as it is, several in one ZIP without folders
+$("bSep").onclick = () => run(async () => {
+  const list = chosen();
+  if (list.length === 1) return downloadOne(list[0]);
+  if (list.length) return downloadZip(list, false);
+});
+
+/* ---- ZIP built in the browser (files are stored, not compressed) ---- */
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; }
+  return t;
+})();
+async function crcOfBlob(blob) {
+  let crc = 0xFFFFFFFF;
+  for (let off = 0; off < blob.size; off += 8 * 1048576) {
+    const buf = new Uint8Array(await blob.slice(off, off + 8 * 1048576).arrayBuffer());
+    for (let i = 0; i < buf.length; i++) crc = CRC_TABLE[(crc ^ buf[i]) & 0xFF] ^ (crc >>> 8);
+  }
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+function buildZip(entries) {                         // entries: [{ path, blob, crc, mtime(ms) }]
+  const enc8 = new TextEncoder(), parts = [], central = [];
+  let offset = 0;
+  for (const e of entries) {
+    const name = enc8.encode(e.path), d = new Date(e.mtime || Date.now());
+    const time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+    const date = (Math.max(d.getFullYear() - 1980, 0) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+    const lh = new DataView(new ArrayBuffer(30 + name.length));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(8, 0, true);
+    lh.setUint16(10, time, true); lh.setUint16(12, date, true); lh.setUint32(14, e.crc, true);
+    lh.setUint32(18, e.blob.size, true); lh.setUint32(22, e.blob.size, true); lh.setUint16(26, name.length, true); lh.setUint16(28, 0, true);
+    new Uint8Array(lh.buffer).set(name, 30);
+    parts.push(lh.buffer, e.blob);
+    const ch = new DataView(new ArrayBuffer(46 + name.length));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(10, 0, true);
+    ch.setUint16(12, time, true); ch.setUint16(14, date, true); ch.setUint32(16, e.crc, true);
+    ch.setUint32(20, e.blob.size, true); ch.setUint32(24, e.blob.size, true); ch.setUint16(28, name.length, true);
+    ch.setUint32(42, offset, true);
+    new Uint8Array(ch.buffer).set(name, 46);
+    central.push(ch.buffer);
+    offset += lh.byteLength + e.blob.size;
+  }
+  const cdSize = central.reduce((s, b) => s + b.byteLength, 0);
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, entries.length, true); end.setUint16(10, entries.length, true);
+  end.setUint32(12, cdSize, true); end.setUint32(16, offset, true);
+  return new Blob([...parts, ...central, end.buffer], { type: "application/zip" });
+}
+async function pool(items, n, fn) {
+  let i = 0;
+  await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => { while (i < items.length) await fn(items[i++]); }));
+}
+async function downloadZip(list, keepFolders) {
+  const total = list.reduce((s, n) => s + (n.size || 0), 0);
+  if (total > ZIP_MAX) throw new Error(t("tooMuch", { size: fmtSize(total) }));
+  const name = zipName(), handle = await pickSave(name, true);
+  if (handle === null) return;
+  const used = new Set(), entries = [], failed = [];
+  const named = list.map(n => {
+    let path = keepFolders ? pathOf(n.key) : n.name;
+    if (used.has(path.toLowerCase())) {                       // same name twice (only possible without folders): name (2).ext
+      const dot = n.name.lastIndexOf("."), base = dot > 0 ? n.name.slice(0, dot) : n.name, ext = dot > 0 ? n.name.slice(dot) : "";
+      const dir = path.slice(0, path.length - n.name.length);
+      for (let i = 2; ; i++) { path = `${dir}${base} (${i})${ext}`; if (!used.has(path.toLowerCase())) break; }
+    }
+    used.add(path.toLowerCase());
+    return { n, path };
+  });
+  let done = 0;
+  await pool(named, 3, async ({ n, path }) => {
+    try {
+      const res = await fetch(await downloadUrl(n.id));
+      if (!res.ok) throw new HttpError(res.status, "");
+      const blob = await res.blob();
+      entries.push({ path, blob, crc: await crcOfBlob(blob), mtime: n.mtime ? n.mtime * 1000 : 0 });
+    } catch (e) { failed.push(`${n.name}: ${errText(e)}`); }
+    $("prog").textContent = t("zipProgress", { a: ++done, b: named.length, size: fmtSize(total) });
+  });
+  if (!entries.length) throw new Error(failed[0] || t("nothing"));
+  entries.sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true }));
+  const zip = buildZip(entries);
+  let saved = false;
+  if (handle) { try { const w = await handle.createWritable(); await w.write(zip); await w.close(); saved = true; } catch { /* normal download below */ } }
+  if (!saved) {
+    const url = URL.createObjectURL(zip);
+    clickLink(url, name);
+    setTimeout(() => URL.revokeObjectURL(url), 120000);
+  }
+  $("prog").textContent = failed.length ? t("zipFailed", { n: name, a: entries.length, f: failed.length, e: failed[0] })
+                                        : t("zipDone", { n: name, a: entries.length, how: t(saved ? "savedWord" : "downloadingWord") });
+}
+
+// every file of the share: name, size, date and its folders (Trimble returns the folder path of each file)
+async function readFiles() {
+  const ids = [...new Set((share.objects || []).filter(o => !o.type || o.type === "FILE").map(o => String(o.id)))];
+  const got = new Map(); let done = 0;
+  loadText("reading", { a: 0, b: ids.length });
+  await pool(ids, 6, async id => {
+    let f = null;
+    try { f = await getJson(`/files/${encodeURIComponent(id)}`, share.accessToken, M.t); }
+    catch (e) {
+      const t = objToken.get(id);                            // fall back to the file's own token
+      if (t) try {
+        const r = await fetch(`${M.a}/shares/token/${encodeURIComponent(t)}`);
+        if (r.ok) f = await getJson(`/files/${encodeURIComponent(id)}`, (await r.json()).accessToken, t);
+      } catch { /* skipped below */ }
+    }
+    if (f) got.set(id, f);
+    loadText("reading", { a: ++done, b: ids.length });
+  });
+  const list = ids.filter(id => got.has(id)).map(id => {
+    const f = got.get(id);
+    return { id, name: String(f.name || id), dirs: (Array.isArray(f.path) ? f.path : []).map(p => String(p.name || "")).filter(Boolean),
+             size: Number.isFinite(+f.size) ? +f.size : -1, mtime: Math.round(Date.parse(f.modifiedOn || f.createdOn) / 1000) || 0 };
+  });
+  // folders all files share are dropped, except the last one (the shared folder keeps its name)
+  let common = list.length ? list[0].dirs : [];
+  for (const x of list) { let i = 0; while (i < common.length && i < x.dirs.length && common[i] === x.dirs[i]) i++; common = common.slice(0, i); }
+  const cut = Math.max(common.length - 1, 0);
+  return list.map(x => [x.id, M.k ? [...x.dirs.slice(cut), x.name].join("/") : x.name, x.size, x.mtime]);
+}
+
+/* ---------- start ----------
+   Link formats after #:  "2<host>~<token>"            short link, the file list is in the share's note
+                          "3<base64url>"                 the same, "<host>~<token>" encrypted with the password
+                          base64url starting with "A"    older long link: flags byte + the whole list            */
+let password = "";
+const NOTE_TAG = "BE1.";
+async function opened() {
+  try { await loadShare(); }
+  catch (e) {
+    if (e instanceof HttpError && e.status >= 400 && e.status < 500) return message("gone");
+    return message("unreach", { e: errText(e) });
+  }
+  if (!M.f) {                                                // short link: the list of files is in the share's note
+    const note = String(share.message || "");
+    try {
+      if (!note.startsWith(NOTE_TAG)) throw new Error("no list");
+      const data = note.slice(NOTE_TAG.length).split("~")[0];
+      if (data) Object.assign(M, await unpack(unb64u(data), password));
+      else Object.assign(M, { n: "", e: "", k: 1 });     // a share whose note only marks it as a Direct link
+    } catch { return message("note"); }
+    if (!Array.isArray(M.f)) {                               // newer links: the files are read from Trimble Connect
+      try { M.f = await readFiles(); }
+      catch (e) { return message("read", { e: errText(e) }); }
+      if (!M.f.length) return message("empty");
+    }
+  }
+  title = M.n || M.p || "";                                 // the link name (the project name when none was given)
+  build();
+  for (const k of files(ROOT)) sel.add(k);                  // everything is ticked at first
+  $("comment").textContent = M.c || "";                     // the sender's comment, e.g. "RPD documentation"
+  $("comment").classList.toggle("hidden", !M.c);
+  applyLang(); show("scrMain");
+}
+const hostApi = code => `https://app${code}.connect.trimble.com/tc/api/2.0`;
+function shortLink(text) {                                   // "<host>~<token>"
+  const m = String(text).match(/^(\d*)~([A-Za-z0-9_-]{20,})$/);
+  if (!m) throw new Error("bad link");
+  return { a: hostApi(m[1]), t: m[2] };
+}
+async function start() {
+  const frag = location.hash.slice(1);
+  if (!frag) return message("noLink");
+  if (typeof DecompressionStream !== "function" || !crypto?.subtle) return message("old");
+  const damaged = () => message("damaged");
+  if (frag[0] === "2") { try { M = shortLink(frag.slice(1)); } catch { return damaged(); } return opened(); }
+  if (frag[0] === "3") {
+    let sealed; try { sealed = unb64u(frag.slice(1)); } catch { return damaged(); }
+    show("scrPass"); $("pw").focus();
+    $("pwForm").onsubmit = async e => {
+      e.preventDefault();
+      $("pwOk").disabled = true; $("pwErr").textContent = "";
+      try { M = shortLink(new TextDecoder().decode(await decrypt(sealed, $("pw").value))); password = $("pw").value; }
+      catch { $("pwErr").textContent = t("wrongPw"); $("pwOk").disabled = false; $("pw").select(); return; }
+      show("scrLoad"); opened();
+    };
+    return;
+  }
+  let raw;
+  try { raw = unb64u(frag); } catch { return damaged(); }
+  if (raw[0] & 2) {
+    show("scrPass"); $("pw").focus();
+    $("pwForm").onsubmit = async e => {
+      e.preventDefault();
+      $("pwOk").disabled = true; $("pwErr").textContent = "";
+      try { M = await unpack(raw, $("pw").value); }
+      catch { $("pwErr").textContent = t("wrongPw"); $("pwOk").disabled = false; $("pw").select(); return; }
+      show("scrLoad"); opened();
+    };
+    return;
+  }
+  try { M = await unpack(raw, ""); } catch { return damaged(); }
+  opened();
+}
+window.addEventListener("hashchange", () => location.reload());
+loadText("opening");
+applyLang();
+start();
+</script>
+</body>
+</html>
